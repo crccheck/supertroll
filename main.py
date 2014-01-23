@@ -10,7 +10,6 @@ import requests
 import tweepy
 
 
-HOST = 'http://www.texastribune.org'
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 if not len(logger.handlers):
@@ -84,7 +83,7 @@ def send_tweet(text):
     logger.info(u'Sent: {}'.format(text))
 
 
-def do_something(host=HOST):
+def do_something(host):
     comments = build_comments(host)
     cleaned = list(clean_comments(comments))
 
@@ -114,4 +113,4 @@ def do_something(host=HOST):
         })
 
 if __name__ == '__main__':
-    do_something()
+    do_something(sys.argv[1])
