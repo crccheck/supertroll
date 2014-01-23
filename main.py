@@ -69,6 +69,7 @@ def get_tweet_text(mc):
         if len(text) > 140:
             logger.warn(u'Too Long: {}'.format(text))
             text = mc.generateString()
+    # FIXME if it can't find one, it'll return one too long anyways :(
     return text
 
 
