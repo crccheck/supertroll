@@ -3,8 +3,8 @@ import logging
 import re
 import sys
 
-from pymarkovchain import MarkovChain
 from lxml import html
+from pymarkovchain import MarkovChain
 import project_runpy
 import requests
 import tweepy
@@ -18,8 +18,8 @@ if not len(logger.handlers):
     logger.addHandler(project_runpy.ColorizingStreamHandler())
 
 
-def build_comments(host=HOST):
-    page = requests.get(HOST + '/')
+def build_comments(host):
+    page = requests.get(host + '/')
     tree = html.fromstring(page.text)
 
     comment_links = tree.xpath("//a[@class='comments']/@href")
@@ -34,7 +34,7 @@ def build_comments(host=HOST):
         links_retrieved.add(link)
         logger.info('Retrieving {}'.format(link))
         try:
-            page = requests.get(HOST + link, timeout=2)
+            page = requests.get(host + link, timeout=2)
         except requests.Timeout as e:
             logger.warn(e)
             # just skip this one. who cares.
@@ -84,20 +84,34 @@ def send_tweet(text):
     logger.info(u'Sent: {}'.format(text))
 
 
-if __name__ == '__main__':
-    comments = build_comments()
+def do_something(host=HOST):
+    comments = build_comments(host)
     cleaned = list(clean_comments(comments))
 
-    if len(cleaned) > 20:  # minumum sample size
+    if len(cleaned) < 20:
+        # if we don't have enough comments, leave
+        logger.error('Not enough comments on {}, only got {} ({}), needed 20'
+                .format(host, len(cleaned), len(comments)))
+        return
 
-        mc = MarkovChain('/tmp/temp.db')
-        mc.db = {}  # HACK to clear any existing data, we want to stay fresh
-        mc.generateDatabase(
-            # seems silly to join and then immediately split, but oh well
-            '\n'.join(cleaned),
-            sentenceSep='[\n]',
-        )
-        if 'send' in sys.argv:
-            send_tweet(get_tweet_text(mc))
-        else:
-            print get_tweet_text(mc)
+    mc = MarkovChain('/tmp/temp.db')
+    mc.db = {}  # HACK to clear any existing data, we want to stay fresh
+    mc.generateDatabase(
+        # seems silly to join and then immediately split, but oh well
+        '\n'.join(cleaned),
+        sentenceSep='[\n]',
+    )
+    if 'send' in sys.argv:
+        send_tweet(get_tweet_text(mc))
+    else:
+        print get_tweet_text(mc)
+        # put stuff in global for debugging
+        globals().update({
+            'mc': mc,
+            'comments': comments,
+            'cleaned': cleaned,
+            'host': host,
+        })
+
+if __name__ == '__main__':
+    do_something()
