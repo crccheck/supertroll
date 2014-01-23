@@ -1,5 +1,6 @@
 from os import environ as env
 import logging
+import re
 
 from pymarkovchain import MarkovChain
 from lxml import html
@@ -12,6 +13,7 @@ HOST = 'http://www.texastribune.org'
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 if not len(logger.handlers):
+    # keep me from repeatedly adding this handler in ipython
     logger.addHandler(project_runpy.ColorizingStreamHandler())
 
 
@@ -50,10 +52,15 @@ def build_comments(host=HOST):
 
 def clean_comments(comments):
     for comment in comments:
-        # throw away comments with urls
         if 'http' in comment:
+            # throw away comments with urls
             continue
-        yield comment
+        if 'trib' in comment.lower():
+            # throw away comments that might directly reference us (4th wall)
+            continue
+        # add a zero width space, \u200b, to keep mentions and hash tags out
+        text = re.sub(r'([@#])(\w)', u'\\1\u200b\\2', comment)
+        yield text
 
 
 def get_tweet_text(mc):
@@ -84,7 +91,7 @@ if __name__ == '__main__':
         mc.db = {}  # HACK to clear any existing data, we want to stay fresh
         mc.generateDatabase(
             # seems silly to join and then immediately split, but oh well
-            '\n'.join(comments),
+            '\n'.join(cleaned),
             sentenceSep='[\n]',
         )
         print get_tweet_text(mc)
