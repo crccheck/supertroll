@@ -11,7 +11,49 @@ import tweepy
 HOST = 'http://www.texastribune.org'
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-logger.addHandler(project_runpy.ColorizingStreamHandler())
+if not len(logger.handlers):
+    logger.addHandler(project_runpy.ColorizingStreamHandler())
+
+
+def build_comments(host=HOST):
+    page = requests.get(HOST + '/')
+    tree = html.fromstring(page.text)
+
+    comment_links = tree.xpath("//a[@class='comments']/@href")
+
+    all_comments = []
+    links_retrieved = set()
+
+    for link in comment_links:
+        if link in links_retrieved:
+            logger.info('Skipping {}'.format(link))
+            continue
+        links_retrieved.add(link)
+        logger.info('Retrieving {}'.format(link))
+        try:
+            page = requests.get(HOST + link, timeout=2)
+        except requests.Timeout as e:
+            logger.warn(e)
+            # just skip this one. who cares.
+            continue
+        tree = html.fromstring(page.text)
+        # this may be splitting comments into multiples if there are line
+        # breaks, but oh well
+        comments = tree.xpath("//p[@class='comment']/text()")
+
+        # cast to a standard type isntead of lxml.etree._ElementStringResult
+        comments = map(unicode, comments)
+
+        all_comments.extend(comments)
+    return all_comments
+
+
+def clean_comments(comments):
+    for comment in comments:
+        # throw away comments with urls
+        if 'http' in comment:
+            continue
+        yield comment
 
 
 def get_tweet_text(mc):
@@ -33,38 +75,16 @@ def send_tweet(text):
 
 
 if __name__ == '__main__':
-    page = requests.get(HOST + '/')
-    tree = html.fromstring(page.text)
+    comments = build_comments()
+    cleaned = list(clean_comments(comments))
 
-    comment_links = tree.xpath("//a[@class='comments']/@href")
+    if len(cleaned) > 20:  # minumum sample size
 
-    all_comments = []
-    links_retrieved = set()
-
-    for link in comment_links:
-        if link in links_retrieved:
-            logger.info('Skipping {}'.format(link))
-            continue
-        links_retrieved.add(link)
-        logger.info('Retrieving {}'.format(link))
-        page = requests.get(HOST + link, timeout=2)
-        tree = html.fromstring(page.text)
-        # this may be splitting comments into multiples if there are line
-        # breaks, but oh well
-        comments = tree.xpath("//p[@class='comment']/text()")
-
-        # throw away comments with urls
-        # cast to a standard type isntead of lxml.etree._ElementStringResult
-        comments = [unicode(x) for x in comments if 'http' not in x]
-
-        all_comments.extend(comments)
-
-
-    mc = MarkovChain('/tmp/temp.db')
-    mc.db = {}  # HACK to clear any existing data, we want to stay fresh
-    mc.generateDatabase(
-        # seems silly to join and then immediately split, but oh well
-        '\n'.join(all_comments),
-        sentenceSep='[\n]',
-    )
-    print get_tweet_text(mc)
+        mc = MarkovChain('/tmp/temp.db')
+        mc.db = {}  # HACK to clear any existing data, we want to stay fresh
+        mc.generateDatabase(
+            # seems silly to join and then immediately split, but oh well
+            '\n'.join(comments),
+            sentenceSep='[\n]',
+        )
+        print get_tweet_text(mc)
