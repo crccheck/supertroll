@@ -1,6 +1,7 @@
 from os import environ as env
 import logging
 import re
+import sys
 
 from pymarkovchain import MarkovChain
 from lxml import html
@@ -80,6 +81,7 @@ def send_tweet(text):
             env.get('ACCESS_KEY'), env.get('ACCESS_SECRET'))
     api = tweepy.API(auth)
     api.update_status(text)
+    logger.info(u'Sent: {}'.format(text))
 
 
 if __name__ == '__main__':
@@ -95,4 +97,7 @@ if __name__ == '__main__':
             '\n'.join(cleaned),
             sentenceSep='[\n]',
         )
-        print get_tweet_text(mc)
+        if 'send' in sys.argv:
+            send_tweet(get_tweet_text(mc))
+        else:
+            print get_tweet_text(mc)
