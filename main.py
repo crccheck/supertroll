@@ -66,8 +66,18 @@ def clean_comments(comments):
 def get_tweet_text(mc):
     text = mc.generateString()
     for __ in range(10):  # only try 10 times
-        if len(text) > 140:
+        # TODO yeah, this logic is stupid. I know.
+        is_valid = True
+        if text[0] == u'-':
+            logger.warn('Starts with a hyphen: {}'.format(text))
+            is_valid = False
+        elif not re.search(r'\w', text):
+            logger.warn('Not a real tweet: {}'.format(text))
+            is_valid = False
+        elif len(text) > 140:
             logger.warn(u'Too Long: {}'.format(text))
+            is_valid = False
+        if not is_valid:
             text = mc.generateString()
     # FIXME if it can't find one, it'll return one too long anyways :(
     return text
@@ -111,6 +121,7 @@ def do_something(host):
             'cleaned': cleaned,
             'host': host,
         })
+
 
 if __name__ == '__main__':
     do_something(sys.argv[1])
