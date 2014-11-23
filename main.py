@@ -1,3 +1,12 @@
+"""
+Usage:
+  python main.py URL [send]
+
+Options:
+
+  URL   some url, like http://example.com
+  send  send a tweet (requires Twitter Oauth credentials)
+"""
 from os import environ as env
 import logging
 import re
