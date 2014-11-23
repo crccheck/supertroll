@@ -14,10 +14,10 @@ if not len(logger.handlers):
     logger.addHandler(project_runpy.ColorizingStreamHandler())
 
 
-def walk(host):
+def walk(page):
     """Walk through a homepage looking for comment pages."""
-    page = requests.get(host + '/')
     tree = html.fromstring(page.text)
+    host = '/'.join(page.request.url.split('/', 3)[:3])
 
     comment_links = tree.xpath("//a[@class='comments']/@href")
 

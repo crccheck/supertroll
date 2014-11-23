@@ -7,6 +7,8 @@ Options:
   URL   some url, like http://example.com
   send  send a tweet (requires Twitter Oauth credentials)
 """
+from __future__ import unicode_literals
+
 from os import environ as env
 import logging
 import re
@@ -14,6 +16,7 @@ import sys
 
 from pymarkovchain import MarkovChain
 import project_runpy
+import requests
 import tweepy
 
 from walk import walk
@@ -26,8 +29,11 @@ if not len(logger.handlers):
     logger.addHandler(project_runpy.ColorizingStreamHandler())
 
 
-def build_comments(host):
-    return walk(host)
+def build_comments(url):
+    if url[-1] != '/':
+        url += '/'
+    page = requests.get(url)
+    return walk(page)
 
 
 def clean_comments(comments):
@@ -65,9 +71,9 @@ def get_tweet_text(mc):
 
 def send_tweet(text):
     auth = tweepy.OAuthHandler(
-            env.get('CONSUMER_KEY'), env.get('CONSUMER_SECRET'))
+        env.get('CONSUMER_KEY'), env.get('CONSUMER_SECRET'))
     auth.set_access_token(
-            env.get('ACCESS_KEY'), env.get('ACCESS_SECRET'))
+        env.get('ACCESS_KEY'), env.get('ACCESS_SECRET'))
     api = tweepy.API(auth)
     api.update_status(text)
     logger.info(u'Sent: {}'.format(text))
@@ -80,7 +86,7 @@ def do_something(host):
     if len(cleaned) < 20:
         # if we don't have enough comments, leave
         logger.error('Not enough comments on {}, only got {} ({}), needed 20'
-                .format(host, len(cleaned), len(comments)))
+            .format(host, len(cleaned), len(comments)))
         return
 
     mc = MarkovChain('/tmp/temp.db')
