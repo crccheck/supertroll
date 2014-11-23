@@ -12,11 +12,11 @@ import logging
 import re
 import sys
 
-from lxml import html
 from pymarkovchain import MarkovChain
 import project_runpy
-import requests
 import tweepy
+
+from walk import walk
 
 
 logger = logging.getLogger(__name__)
@@ -27,36 +27,7 @@ if not len(logger.handlers):
 
 
 def build_comments(host):
-    page = requests.get(host + '/')
-    tree = html.fromstring(page.text)
-
-    comment_links = tree.xpath("//a[@class='comments']/@href")
-
-    all_comments = []
-    links_retrieved = set()
-
-    for link in comment_links:
-        if link in links_retrieved:
-            logger.info('Skipping {}'.format(link))
-            continue
-        links_retrieved.add(link)
-        logger.info('Retrieving {}'.format(link))
-        try:
-            page = requests.get(host + link, timeout=2)
-        except requests.Timeout as e:
-            logger.warn(e)
-            # just skip this one. who cares.
-            continue
-        tree = html.fromstring(page.text)
-        # this may be splitting comments into multiples if there are line
-        # breaks, but oh well
-        comments = tree.xpath("//p[@class='comment']/text()")
-
-        # cast to a standard type isntead of lxml.etree._ElementStringResult
-        comments = map(unicode, comments)
-
-        all_comments.extend(comments)
-    return all_comments
+    return walk(host)
 
 
 def clean_comments(comments):
