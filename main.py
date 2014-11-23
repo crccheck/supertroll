@@ -33,6 +33,10 @@ def build_comments(url):
     if url[-1] != '/':
         url += '/'
     page = requests.get(url)
+    content_type = page.headers['Content-Type']
+    if 'application/rss' in content_type:
+        from rss import rss
+        return rss(page)
     return walk(page)
 
 
