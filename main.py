@@ -54,6 +54,7 @@ def clean_comments(comments):
 
 
 def get_tweet_text(mc):
+    """Generate a tweetable comment."""
     text = mc.generateString()
     for __ in range(10):  # only try 10 times
         # TODO yeah, this logic is stupid. I know.
@@ -100,10 +101,20 @@ def do_something(host):
         '\n'.join(cleaned),
         sentenceSep='[\n]',
     )
+    all_comments = '. '.join(comments)
+    tweet_text = get_tweet_text(mc)
+    for __ in range(10):  # only try 10 times, yet again, this is stupid but I'm lazy
+        if tweet_text in all_comments:
+            # prevent script from sending something that's verbatim from comments
+            logger.warn('Already said: {}'.format(tweet_text))
+            tweet_text = get_tweet_text(mc)
+        else:
+            # tweet is ok
+            break
     if 'send' in sys.argv:
-        send_tweet(get_tweet_text(mc))
+        send_tweet(tweet_text)
     else:
-        print get_tweet_text(mc)
+        print tweet_text
         # put stuff in global for debugging
         globals().update({
             'mc': mc,
