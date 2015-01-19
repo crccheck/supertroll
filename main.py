@@ -48,9 +48,7 @@ def clean_comments(comments):
         if 'trib' in comment.lower():
             # throw away comments that might directly reference us (4th wall)
             continue
-        # add a zero width space, \u200b, to keep mentions and hash tags out
-        text = re.sub(r'([@#])(\w)', u'\\1\u200b\\2', comment)
-        yield text
+        yield comment
 
 
 def get_tweet_text(mc):
@@ -65,7 +63,7 @@ def get_tweet_text(mc):
         elif not re.search(r'\w', text):
             logger.warn('Not a real tweet: {}'.format(text))
             is_valid = False
-        elif len(text) > 140:
+        elif len(text) > 138:  # 140 + fudge room
             logger.warn(u'Too Long: {}'.format(text))
             is_valid = False
         if not is_valid:
@@ -80,6 +78,8 @@ def send_tweet(text):
     auth.set_access_token(
         env.get('ACCESS_KEY'), env.get('ACCESS_SECRET'))
     api = tweepy.API(auth)
+    # add a zero width space, \u200b, to keep mentions and hash tags out
+    text = re.sub(r'([@#])(\w)', u'\\1\u200b\\2', text)
     api.update_status(text)
     logger.info(u'Sent: {}'.format(text))
 
