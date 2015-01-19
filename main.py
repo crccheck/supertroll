@@ -14,7 +14,7 @@ import logging
 import re
 import sys
 
-from pymarkovchain import MarkovChain
+import markovify
 import project_runpy
 import requests
 import tweepy
@@ -51,27 +51,6 @@ def clean_comments(comments):
         yield comment
 
 
-def get_tweet_text(mc):
-    """Generate a tweetable comment."""
-    text = mc.generateString()
-    for __ in range(10):  # only try 10 times
-        # TODO yeah, this logic is stupid. I know.
-        is_valid = True
-        if text[0] == u'-':
-            logger.warn('Starts with a hyphen: {}'.format(text))
-            is_valid = False
-        elif not re.search(r'\w', text):
-            logger.warn('Not a real tweet: {}'.format(text))
-            is_valid = False
-        elif len(text) > 138:  # 140 + fudge room
-            logger.warn(u'Too Long: {}'.format(text))
-            is_valid = False
-        if not is_valid:
-            text = mc.generateString()
-    # FIXME if it can't find one, it'll return one too long anyways :(
-    return text
-
-
 def send_tweet(text):
     auth = tweepy.OAuthHandler(
         env.get('CONSUMER_KEY'), env.get('CONSUMER_SECRET'))
@@ -94,20 +73,14 @@ def do_something(host):
             .format(host, len(cleaned), len(comments)))
         return
 
-    mc = MarkovChain('/tmp/temp.db')
-    mc.db = {}  # HACK to clear any existing data, we want to stay fresh
-    mc.generateDatabase(
-        # seems silly to join and then immediately split, but oh well
-        '\n'.join(cleaned),
-        sentenceSep='[\n]',
-    )
     all_comments = '. '.join(comments)
-    tweet_text = get_tweet_text(mc)
+    text_model = markovify.Text(all_comments)
+    tweet_text = text_model.make_short_sentence(138)
     for __ in range(10):  # only try 10 times, yet again, this is stupid but I'm lazy
         if tweet_text in all_comments:
             # prevent script from sending something that's verbatim from comments
             logger.warn('Already said: {}'.format(tweet_text))
-            tweet_text = get_tweet_text(mc)
+            tweet_text = text_model.make_short_sentence(138)
         else:
             # tweet is ok
             break
@@ -117,7 +90,7 @@ def do_something(host):
         print tweet_text
         # put stuff in global for debugging
         globals().update({
-            'mc': mc,
+            'text_model': text_model,
             'comments': comments,
             'cleaned': cleaned,
             'host': host,

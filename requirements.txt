@@ -1,5 +1,6 @@
 lxml==3.4.1
 project-runpy==0.3.1
-PyMarkovChain==1.7.5
-requests==2.4.3
-tweepy==2.3.0
+requests==2.5.1
+tweepy==3.1.0
+# currently versionless at 0.0.0
+markovify
